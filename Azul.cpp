@@ -27,9 +27,9 @@ struct PlayerBoard {
     };
     
     int trash;  
-    int Point;  
+    int point;  
 
-    PlayerBoard() : trash(0), Point(0) {}
+    PlayerBoard() : trash(0), point(0) {}
     SquarePart squarePart[5][5];
     StaircasePart staircasePart[5][5];
 
@@ -56,20 +56,37 @@ void initializePlayerBoard(PlayerBoard& playerBoard) {
 }
 
 // Function to draw tiles for a round
-void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles) {
+void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards) {
+    int tileNum = 0;
+    for (const auto& entry : bagTiles) {
+        tileNum += entry.second;
+    }
+
     // Randomly fill each factory display with tiles
     for (auto& display : factoryDisplays) {
         display.tiles.clear(); // Clear previous tiles
         for (int i = 0; i < 4; ++i) {
+
+            // refill bagTiles
+            if(tileNum == 0){ refillBagTiles(bagTiles, playerBoards);}
+
             Color randomColor = static_cast<Color>(rand() % 5);
             if (bagTiles[randomColor] > 0) {
                 display.tiles.push_back(randomColor);
                 bagTiles[randomColor]--;
+                tileNum--;
             } else {
                 // If no more tiles of this color are available, choose another color
                 i--;
             }
         }
+    }
+}
+
+// Function to refill bagTiles
+void refillBagTiles(unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards){
+    for (int i = 0; i < 5; ++i) {
+        bagTiles[static_cast<Color>(i)] = 20; // Each color starts with 20 tiles
     }
 }
 
@@ -160,8 +177,9 @@ void displayPlayerBoard(const PlayerBoard& playerBoard) {
         // Display square part
         for (int j = 0; j < 5; ++j) {
             if (playerBoard.squarePart[i][j].built) {
-                cout << "X ";
-            } else {
+                cout << "O ";
+            } 
+            else {
                 switch (playerBoard.squarePart[i][j].color) {
                     case R:
                         cout << "R ";
@@ -216,6 +234,13 @@ void displayPlayerBoard(const PlayerBoard& playerBoard) {
     cout << "--------------------" << endl;
 }
 
+// Function to display a player board
+void displayPlayerScore(int playerNumber, vector<PlayerBoard>& playerBoards) {
+    for(int i = 0; i < playerNumber; i++){
+        cout << "Player " << i+1 << ": "<< playerBoards[i].point << endl;
+    }
+}
+
 // A warpper function for easying calling
 void displayAll(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards){
     for (int i = 0; i < playerNumber; ++i) {
@@ -241,7 +266,7 @@ vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryD
     }
 
     // Draw tiles for the first round
-    factoryDrawTiles(factoryDisplays, bagTiles);
+    factoryDrawTiles(factoryDisplays, bagTiles, playerBoards);
 
     // Initialize unused tiles count
     for (int i = 0; i < 5; ++i) {
@@ -253,8 +278,92 @@ vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryD
 
     return playerBoards;
 }
-// Function to draw tiles for a player's turn
 
+void countPoints(int row, int col, PlayerBoard& playerBoard){
+    int maxWidth = 1;
+    int length = 1;
+
+    // Check to the left of the current position
+    for (int c = col - 1; c >= 0 && playerBoard.squarePart[row][c].built; --c) {
+        ++length;
+    }
+
+    // Check to the right of the current position
+    for (int c = col + 1; c < 5 && playerBoard.squarePart[row][c].built; ++c) {
+        ++length;
+    }
+
+    maxWidth = std::max(maxWidth, length);
+
+    // Function to find the longest vertical line
+    int maxLength = 1;
+    int length = 1;
+
+    // Check above the current position
+    for (int r = row - 1; r >= 0 && playerBoard.squarePart[r][col].built; --r) {
+        ++length;
+    }
+
+    // Check below the current position
+    for (int r = row + 1; r < 5 && playerBoard.squarePart[r][col].built; ++r) {
+        ++length;
+    }
+
+    maxLength = std::max(maxLength, length);
+    playerBoard.point = maxLength + maxWidth;
+}
+
+// Move Tile from staircase to square then count points
+void moveTile(int playerNumber, vector<PlayerBoard>& playerBoards){
+    // check if the row is full
+    for(int i = 0; i < playerNumber; i++){
+        for(int rowNumber = 0; rowNumber < 5; rowNumber++){
+            if(playerBoards[i].staircasePart[rowNumber][rowNumber].used == true){
+                Color color = playerBoards[i].staircasePart[rowNumber][rowNumber].color;
+                for(int columnNumber = 0; columnNumber < 5; columnNumber++){
+                    playerBoards[i].staircasePart[rowNumber][columnNumber].used = false;                    
+                    if(playerBoards[i].squarePart[rowNumber][columnNumber].color == color){
+                        playerBoards[i].squarePart[rowNumber][columnNumber].built = true;
+                        countPoints(rowNumber, columnNumber, playerBoards[i]);
+                    }
+                }
+            }
+        }
+    }
+
+    cout << "All players' Tiles has moved, the current scores are: " << endl;
+    displayPlayerScore(playerNumber, playerBoards);
+    cout << "---------------" << endl;
+    cout << "Starting a new Round." << endl;
+    cout << "---------------" << endl;
+
+    for (int i = 0; i < playerNumber; ++i) {
+        cout << "Player " << (i + 1) << ":" << endl;
+        displayPlayerBoard(playerBoards[i]);
+        cout << endl;
+    }
+};
+
+// Function to check when the game is finished
+bool CheckEnd(int playerNumber, vector<PlayerBoard>& playerBoards){
+    bool gameEnd = false;
+
+    // if any player finish one row in the squarepart, the game ends
+    for(int i = 0; i < playerNumber; i++){
+        for (int row = 0; row < 5; ++row) {
+            for (int col = 0; col < 5; ++col) {
+                gameEnd = true;
+                if (!playerBoards[i].squarePart[row][col].built) {
+                    gameEnd = false;
+                    break;  // No need to check further if one is not built
+                }
+            }
+        }
+    }
+    return gameEnd;
+}
+
+// Function to draw tiles for a player's turn
 void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards, int firstPlayer){
     // Simulate a player's turn
     int nextPlayer = 0;
@@ -265,33 +374,23 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
         cout << "Player " << nextPlayer%playerNumber+firstPlayer+1 << "\'s turn:"<< endl;
 
         // Ask the player to choose a factory and Validate the input
-        int factoryNumber;
+        int factoryNumber = 99;
         if(unusedNum > 0) {
             cout << "Enter the number of the factory you want to choose or type 0 for taking tiles from Unused Pile: ";
-            cin >> factoryNumber;
-
-            while (factoryNumber-1 < 0 || factoryNumber-1 > factoryDisplays.size()) {
-                if(factoryNumber == 0){break;}
-
-                cout << "Invalid row number";
+            while (true) {
                 cin >> factoryNumber;
-
-                if (cin.fail()) {
-                    cin.clear();
-                }
+                if(factoryNumber >= 0 && factoryNumber <= factoryDisplays.size()){break;}
+                else {cout << "Invalid row number, please choose again: ";}
+                if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
             }
         }
         else {
             cout << "Enter the number of the factory you want to choose: ";
-            cin >> factoryNumber;
-
-            while (factoryNumber-1 < 0 || factoryNumber-1 > factoryDisplays.size()) {
-                cout << "Invalid row number";
+            while (true) {
                 cin >> factoryNumber;
-                
-                if (cin.fail()) {
-                    cin.clear();
-                }
+                if(factoryNumber >= 1 && factoryNumber <= factoryDisplays.size()){break;}
+                else {cout << "Invalid row number, please choose again: ";}
+                if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
             }
         }
             
@@ -301,10 +400,9 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
         
         // Validate the input
         bool validColor = false;
+        char colorChar;
         while (!validColor) {
-            char colorChar;
             cin >> colorChar;
-            
             // Convert the character to Color enum
             switch (colorChar) {
                 case 'R':
@@ -323,26 +421,26 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
                     chosenColor = W;
                     break;
             }
+
+            // if player choose factory, check if that color exist in the factory
             if(factoryNumber != 0){
                 if (find(factoryDisplays[factoryNumber - 1].tiles.begin(), factoryDisplays[factoryNumber - 1].tiles.end(), chosenColor) != factoryDisplays[factoryNumber - 1].tiles.end()) {
                     validColor = true;
                 } else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
             }
+
+            // check if the color exist in Unused tile
             else {
                 if(unusedTiles[chosenColor] > 0){validColor = true;}
                 else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
             }
 
             // Clear any input errors and discard invalid input
-            if (cin.fail()) {
-                cin.clear();
-                validColor = false;
-            }
-                    
+            if (cin.fail()) { validColor = false; cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }      
         }
 
-        // Take all tiles of the chosen color from the selected factory
         int tileCount = 0;
+        // Take all tiles of the chosen color from the selected factory
         if(factoryNumber != 0){
             for (auto& display : factoryDisplays[factoryNumber - 1].tiles) {
                 if (display == chosenColor) {
@@ -369,51 +467,64 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
 
         // Ask the player to choose a row for the staircase
         int rowNumber;
-        cout << "Enter the number of the row you want to place the tiles (1-5): ";
+        cout << "Enter the number of the row you want to place the tiles (1-5), or choose 0 to trash them: ";
 
         // Validate the input
-        bool checkStaircase = true;
-        while(checkStaircase){
+        bool validRow = false;
+        while(!validRow){
             cin >> rowNumber;
+            if(rowNumber == 0){ break; }
             
+            // check is 1 to 5
             if(rowNumber < 1 || rowNumber > 5){
                 cout << "Invalid row number. Please choose a number between 1 and 5: ";
             }
+
+            // check if the row is used for different color
             else if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][0].used == true && playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][0].color != chosenColor){
                 cout << "This Row has used for different color, please choose other row: ";
             }
+
+            // check if the row is full
             else if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][rowNumber-1].used == true){
                 cout << "This row is full, please choose other row: ";
             }
-            else{checkStaircase = false;}
+            
+            else{validRow = true;}
 
-            if (cin.fail()) {
-                cin.clear();
-            }
+            if (cin.fail()) { cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }      
+        }
+
+        // Trash all selected tiles
+        if(rowNumber == 0){
+            playerBoards[(nextPlayer+firstPlayer)%playerNumber].trash += tileCount;
+            cout << "Number of tiles moved to trash: " << tileCount << endl;
         }
 
         //Calculate the spaces available to put the tiles
-        int spacesAvailable = rowNumber;
-        int startToAdd = 0;
-        for(int i = 0; i < rowNumber; i++){
-            if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][i].used == true){
-                spacesAvailable--;
-                startToAdd++;
+        else{
+            int spacesAvailable = rowNumber;
+            int startToAdd = 0;
+            for(int i = 0; i < rowNumber; i++){
+                if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][i].used == true){
+                    spacesAvailable--;
+                    startToAdd++;
+                }
             }
-        }
-        if(tileCount < spacesAvailable){spacesAvailable = tileCount;}
+            if(tileCount < spacesAvailable){spacesAvailable = tileCount;}
 
-        // Update the player board and remaining tiles
-        for(int i = 0; i < spacesAvailable; i++){
-            playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].color = chosenColor;
-            playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].used = true;
-            tileCount--;
-        }
+            // Update the player board and remaining tiles
+            for(int i = 0; i < spacesAvailable; i++){
+                playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].color = chosenColor;
+                playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].used = true;
+                tileCount--;
+            }
 
-        // If the chosen row has fewer spaces than the tiles, move extra tiles to trash
-        if(tileCount > 0){
-            playerBoards[(nextPlayer+firstPlayer)%playerNumber].trash += tileCount;
-            cout << "Number of Extra tiles moved to trash: " << tileCount << endl;
+            // If the chosen row has fewer spaces than the tiles, move extra tiles to trash
+            if(tileCount > 0){
+                playerBoards[(nextPlayer+firstPlayer)%playerNumber].trash += tileCount;
+                cout << "Number of Extra tiles moved to trash: " << tileCount << endl;
+            }
         }
         cout << "Updated Player Boards:" << endl;
         displayAll(playerNumber, factoryDisplays, unusedTiles, playerBoards);
@@ -421,32 +532,20 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
         nextPlayer++;
     }
 
-    CountPoint();
-    bool a = CheckEnd(playerNumber, playerBoards);
-    cout << a << endl;
-}
-void CountPoint(){};
-bool CheckEnd(int playerNumber, vector<PlayerBoard>& playerBoards){
-    bool gameEnd = true;
-
-    for(int i = 0; i < playerNumber; i++){
-        for (int row = 0; row < 5; ++row) {
-            for (int col = 0; col < 5; ++col) {
-                gameEnd = true;
-                if (!playerBoards[i].squarePart[row][col].built) {
-                    gameEnd = false;
-                    break;  // No need to check further if one is not built
-                }
-            }
-        }
-          // No row found where all are built
-    }
-    return gameEnd;
+    cout << "No more tiles on the table, now move the tile from right to left and count the points" << endl;
+    cout << "---------------" << endl;
+    moveTile(playerNumber, playerBoards);
+    bool finished = CheckEnd(playerNumber, playerBoards);
+    if(finished){ cout << "The game is ended." << endl; }
+    // else { playRound(playerNumber, factoryDisplays, unusedTiles, playerBoards, firstPlayer); }
 }
 
 int main() {
     // Seed the random number generator
     srand(static_cast<unsigned>(time(0)));
+
+    cout << "Welcome to Azul. For the rule of this boardgame, you may visit" << endl;
+    cout << "https://www.ultraboardgames.com/azul/game-rules.php" << endl;
 
     // Get the number of players
     int firstPlayer = 0;
@@ -458,13 +557,10 @@ int main() {
     while (playerNumber < 2 || playerNumber > 4) {
         cout << "Invalid row number. Please choose a number between 2 and 4: ";
         cin >> playerNumber;
-        
-        if (cin.fail()) {
-            cin.clear(); // Clear the error flag
-        }
+        if (cin.fail()) {cin.clear();}
     }
 
-    // Create 9 Factory Displays, remaining tiles, unused tiles
+    // Create Factory Displays, remaining tiles, unused tiles
     vector<FactoryDisplay> factoryDisplays(playerNumber*2+1);
     unordered_map<Color, int> bagTiles;
     unordered_map<Color, int> unusedTiles;
