@@ -413,7 +413,7 @@ bool isValidRow(const PlayerBoard& playerBoard, int rowNum, Color chosenColor) {
            playerBoard.staircasePart[rowNum - 1][rowNum - 1].used == false &&
            std::none_of(std::begin(playerBoard.squarePart[rowNum - 1]),
                         std::end(playerBoard.squarePart[rowNum - 1]),
-                        [chosenColor](const auto& square) {
+                        [chosenColor](const PlayerBoard::SquarePart& square) {
                             return square.built && square.color == chosenColor;
                         });
 }
