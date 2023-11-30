@@ -4,6 +4,8 @@
 #include <ctime>
 #include <unordered_map>
 #include <algorithm> 
+#include <stdexcept>
+#include <limits>
 
 using namespace std;
 
@@ -35,6 +37,12 @@ struct PlayerBoard {
 
 };
 
+// Define a list for points deducted for trashed tiles
+int pointsToDeduct[8] = {0, 1, 2, 4, 6, 8, 11, 14};
+
+// Define a bag that contains all the tiles
+unordered_map<Color, int> bagTiles;
+
 // Function to initialize a player board
 void initializePlayerBoard(PlayerBoard& playerBoard) {
     // Initialize square part with colors and set built to false
@@ -55,8 +63,27 @@ void initializePlayerBoard(PlayerBoard& playerBoard) {
     }
 }
 
+// Function to refill bagTiles
+void refillBagTiles(unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber){
+    cout << "Tiles in the bag are used up, refill the bag. " << endl;
+
+    for (int i = 0; i < 5; ++i) {
+        bagTiles[static_cast<Color>(i)] = 20; // Each color starts with 20 tiles
+    }
+
+    for(int i = 0; i < playerNumber; i++){
+        for(int row = 0; row < 5; row++){
+            for(int column = 0; column < 5; column++){
+                if(playerBoards[i].squarePart[row][column].built == true){
+                    bagTiles[playerBoards[i].squarePart[row][column].color] --;
+                }
+            }
+        }
+    }
+}
+
 // Function to draw tiles for a round
-void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards) {
+void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber) {
     int tileNum = 0;
     for (const auto& entry : bagTiles) {
         tileNum += entry.second;
@@ -68,7 +95,7 @@ void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Col
         for (int i = 0; i < 4; ++i) {
 
             // refill bagTiles
-            if(tileNum == 0){ refillBagTiles(bagTiles, playerBoards);}
+            if(tileNum == 0){ refillBagTiles(bagTiles, playerBoards, playerNumber);}
 
             Color randomColor = static_cast<Color>(rand() % 5);
             if (bagTiles[randomColor] > 0) {
@@ -80,13 +107,6 @@ void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Col
                 i--;
             }
         }
-    }
-}
-
-// Function to refill bagTiles
-void refillBagTiles(unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards){
-    for (int i = 0; i < 5; ++i) {
-        bagTiles[static_cast<Color>(i)] = 20; // Each color starts with 20 tiles
     }
 }
 
@@ -266,7 +286,7 @@ vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryD
     }
 
     // Draw tiles for the first round
-    factoryDrawTiles(factoryDisplays, bagTiles, playerBoards);
+    factoryDrawTiles(factoryDisplays, bagTiles, playerBoards, playerNumber);
 
     // Initialize unused tiles count
     for (int i = 0; i < 5; ++i) {
@@ -279,52 +299,209 @@ vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryD
     return playerBoards;
 }
 
+// Player Choose a factory to take tiles
+int getFactoryNum(int unusedNum, vector<FactoryDisplay>& factoryDisplays){
+    int factoryNum = 99;
+
+    if(unusedNum > 0) {
+        cout << "Enter the number of the factory you want to choose or type 0 for taking tiles from Unused Pile: ";
+        while (true) {
+            cin >> factoryNum;
+            if(factoryNum >= 0 && factoryNum <= factoryDisplays.size()){break;}
+            else {cout << "Invalid row number, please choose again: ";}
+            if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
+        }
+    }
+    else {
+        cout << "Enter the number of the factory you want to choose: ";
+        while (true) {
+            cin >> factoryNum;
+            if(factoryNum >= 1 && factoryNum <= factoryDisplays.size()){break;}
+            else {cout << "Invalid row number, please choose again: ";}
+            if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
+        }
+    }
+
+    return factoryNum;
+}
+
+// Player choose a color to take
+Color getColor(int unusedNum, int factoryNum, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles){
+    cout << "Enter the letter of the color you want to choose (R/Y/G/B/W): ";
+
+    // Validate the input
+    Color chosenColor;
+    bool validColor = false;
+    char colorChar;
+
+    while (!validColor) {
+        cin >> colorChar;
+        // Convert the character to Color enum
+        switch (colorChar) {
+            case 'R':
+                chosenColor = R;
+                break;
+            case 'Y':
+                chosenColor = Y;
+                break;
+            case 'G':
+                chosenColor = G;
+                break;
+            case 'B':
+                chosenColor = B;
+                break;
+            case 'W':
+                chosenColor = W;
+                break;
+        }
+
+        // if player choose factory, check if that color exist in the factory
+        if(factoryNum != 0){
+            if (find(factoryDisplays[factoryNum - 1].tiles.begin(), factoryDisplays[factoryNum - 1].tiles.end(), chosenColor) != factoryDisplays[factoryNum - 1].tiles.end()) {
+                validColor = true;
+            } else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
+        }
+
+        // check if the color exist in Unused tile
+        else {
+            if(unusedTiles[chosenColor] > 0){validColor = true;}
+            else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
+        }
+
+        // Clear any input errors and discard invalid input
+        if (cin.fail()) { validColor = false; cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }      
+    }
+
+    return chosenColor;
+}
+
+// Get the number of tiles player takes
+int getTiles(int unusedNum, int factoryNum, Color chosenColor, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles){
+    int tileCount = 0;
+    
+    // Take all tiles of the chosen color from the selected factory
+    if(factoryNum != 0){
+        for (auto& display : factoryDisplays[factoryNum - 1].tiles) {
+            if (display == chosenColor) {
+                tileCount++;
+            }
+        }
+
+        // Add the rest to unused tile
+        for (auto& display : factoryDisplays[factoryNum - 1].tiles) {
+            if (display != chosenColor) {
+                unusedTiles[display]++;
+                unusedNum++;
+            }
+        }
+        factoryDisplays.erase(factoryDisplays.begin() + factoryNum-1);
+    }
+
+    // Take all tiles of the chosen color from Unused Tiles
+    else {
+        tileCount = unusedTiles[chosenColor];
+        unusedTiles[chosenColor] = 0;
+        unusedNum -= tileCount;
+    }
+    return tileCount;
+}
+
+// Get the Row number of the staircase to put
+bool isValidRow(const PlayerBoard& playerBoard, int rowNum, Color chosenColor) {
+    return rowNum >= 1 && rowNum <= 5 &&
+           playerBoard.staircasePart[rowNum - 1][0].used == false &&
+           playerBoard.staircasePart[rowNum - 1][rowNum - 1].used == false &&
+           std::none_of(std::begin(playerBoard.squarePart[rowNum - 1]),
+                        std::end(playerBoard.squarePart[rowNum - 1]),
+                        [chosenColor](const auto& square) {
+                            return square.built && square.color == chosenColor;
+                        });
+}
+
+// Put the tiles to the staircase
+void takeTiles(int RowNum, int tileCount, int nextPlayer, int playerNumber, Color chosenColor, vector<PlayerBoard>& playerBoards){
+    // Trash all selected tiles
+    if(RowNum == 0){
+        playerBoards[nextPlayer%playerNumber].trash += tileCount;
+        cout << "Number of tiles moved to trash: " << tileCount << endl;
+    }
+
+    //Calculate the spaces available to put the tiles
+    else {
+        int spacesAvailable = RowNum;
+        int startToAdd = 0;
+        for(int i = 0; i < RowNum; i++){
+            if(playerBoards[nextPlayer%playerNumber].staircasePart[RowNum-1][i].used == true){
+                spacesAvailable--;
+                startToAdd++;
+            }
+        }
+        if(tileCount < spacesAvailable){spacesAvailable = tileCount;}
+
+        // Update the player board and remaining tiles
+        for(int i = 0; i < spacesAvailable; i++){
+            playerBoards[nextPlayer%playerNumber].staircasePart[RowNum-1][startToAdd+i].color = chosenColor;
+            playerBoards[nextPlayer%playerNumber].staircasePart[RowNum-1][startToAdd+i].used = true;
+            tileCount--;
+        }
+
+        // If the chosen row has fewer spaces than the tiles, move extra tiles to trash
+        if(tileCount > 0){
+            playerBoards[nextPlayer%playerNumber].trash += tileCount;
+            cout << "Number of Extra tiles moved to trash: " << tileCount << endl;
+        }
+    }
+}
+
+// Update the points of a round
 void countPoints(int row, int col, PlayerBoard& playerBoard){
     int maxWidth = 1;
-    int length = 1;
+    int width = 1;
 
     // Check to the left of the current position
-    for (int c = col - 1; c >= 0 && playerBoard.squarePart[row][c].built; --c) {
-        ++length;
-    }
+    for (int c = col - 1; c >= 0 && playerBoard.squarePart[row][c].built; --c) {++width;}
 
     // Check to the right of the current position
-    for (int c = col + 1; c < 5 && playerBoard.squarePart[row][c].built; ++c) {
-        ++length;
-    }
+    for (int c = col + 1; c < 5 && playerBoard.squarePart[row][c].built; ++c) {++width;}
 
-    maxWidth = std::max(maxWidth, length);
+    maxWidth = std::max(maxWidth, width);
 
     // Function to find the longest vertical line
     int maxLength = 1;
     int length = 1;
 
     // Check above the current position
-    for (int r = row - 1; r >= 0 && playerBoard.squarePart[r][col].built; --r) {
-        ++length;
-    }
+    for (int r = row - 1; r >= 0 && playerBoard.squarePart[r][col].built; --r) {++length;}
 
     // Check below the current position
-    for (int r = row + 1; r < 5 && playerBoard.squarePart[r][col].built; ++r) {
-        ++length;
-    }
+    for (int r = row + 1; r < 5 && playerBoard.squarePart[r][col].built; ++r) {++length;}
 
     maxLength = std::max(maxLength, length);
-    playerBoard.point = maxLength + maxWidth;
+
+    // Add the point
+    playerBoard.point += maxLength + maxWidth;
+
+    // Deduct points from trash then reset trash
+    if (playerBoard.trash > 7) { playerBoard.trash = 7; }
+    playerBoard.point -= pointsToDeduct[playerBoard.trash];
+    playerBoard.trash = 0;
+
+    // Player will not get negative number of points
+    if (playerBoard.point < 0) { playerBoard.point = 0; }
 }
 
 // Move Tile from staircase to square then count points
 void moveTile(int playerNumber, vector<PlayerBoard>& playerBoards){
     // check if the row is full
     for(int i = 0; i < playerNumber; i++){
-        for(int rowNumber = 0; rowNumber < 5; rowNumber++){
-            if(playerBoards[i].staircasePart[rowNumber][rowNumber].used == true){
-                Color color = playerBoards[i].staircasePart[rowNumber][rowNumber].color;
-                for(int columnNumber = 0; columnNumber < 5; columnNumber++){
-                    playerBoards[i].staircasePart[rowNumber][columnNumber].used = false;                    
-                    if(playerBoards[i].squarePart[rowNumber][columnNumber].color == color){
-                        playerBoards[i].squarePart[rowNumber][columnNumber].built = true;
-                        countPoints(rowNumber, columnNumber, playerBoards[i]);
+        for(int row = 0; row < 5; row++){
+            if(playerBoards[i].staircasePart[row][row].used == true){
+                Color color = playerBoards[i].staircasePart[row][row].color;
+                for(int column = 0; column < 5; column++){
+                    playerBoards[i].staircasePart[row][column].used = false;                    
+                    if(playerBoards[i].squarePart[row][column].color == color){
+                        playerBoards[i].squarePart[row][column].built = true;
+                        countPoints(row, column, playerBoards[i]);
                     }
                 }
             }
@@ -366,166 +543,50 @@ bool CheckEnd(int playerNumber, vector<PlayerBoard>& playerBoards){
 // Function to draw tiles for a player's turn
 void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards, int firstPlayer){
     // Simulate a player's turn
-    int nextPlayer = 0;
+    int nextPlayer = firstPlayer;
     int unusedNum = 0;
 
     while(factoryDisplays.size() > 0 || unusedNum > 0){
 
-        cout << "Player " << nextPlayer%playerNumber+firstPlayer+1 << "\'s turn:"<< endl;
+        cout << "Player " << nextPlayer%playerNumber+1 << "\'s turn:"<< endl;
 
         // Ask the player to choose a factory and Validate the input
-        int factoryNumber = 99;
-        if(unusedNum > 0) {
-            cout << "Enter the number of the factory you want to choose or type 0 for taking tiles from Unused Pile: ";
-            while (true) {
-                cin >> factoryNumber;
-                if(factoryNumber >= 0 && factoryNumber <= factoryDisplays.size()){break;}
-                else {cout << "Invalid row number, please choose again: ";}
-                if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
-            }
-        }
-        else {
-            cout << "Enter the number of the factory you want to choose: ";
-            while (true) {
-                cin >> factoryNumber;
-                if(factoryNumber >= 1 && factoryNumber <= factoryDisplays.size()){break;}
-                else {cout << "Invalid row number, please choose again: ";}
-                if (cin.fail()) {cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }
-            }
-        }
-            
-        // Ask the player to choose a color
+        int factoryNum = getFactoryNum(unusedNum, factoryDisplays);
+
+        // Get the Row number of the staircase to put
+        int rowNum;
         Color chosenColor;
-        cout << "Enter the letter of the color you want to choose (R/Y/G/B/W): ";
+        while (true) {
+            std::cout << "Enter the number of the row you want to choose (1-5), or 0 to exit: ";
+            std::cin >> rowNum;
+
+            if (rowNum == 0) {
+                break;
+            }
+
+            // Ask the player to choose a color
+            chosenColor = getColor(unusedNum, factoryNum, factoryDisplays, unusedTiles);
+
+            if (isValidRow(playerBoards[nextPlayer % playerNumber], rowNum, chosenColor)) {
+                std::cout << "Valid input. Processing..." << std::endl;
+                // Your processing logic here
+                // Update the playerBoards or perform other actions based on the valid input
+                ++nextPlayer;
+            } else {
+                std::cout << "Invalid input. Please choose again." << std::endl;
+            }
+
+            if (std::cin.fail()) {
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            }
+        }   
+
+        // Get the number of tiles of the color in the factory
+        int tileCount = getTiles(unusedNum, factoryNum, chosenColor, factoryDisplays, unusedTiles);     
+
+        takeTiles(rowNum, tileCount, nextPlayer, playerNumber, chosenColor, playerBoards);
         
-        // Validate the input
-        bool validColor = false;
-        char colorChar;
-        while (!validColor) {
-            cin >> colorChar;
-            // Convert the character to Color enum
-            switch (colorChar) {
-                case 'R':
-                    chosenColor = R;
-                    break;
-                case 'Y':
-                    chosenColor = Y;
-                    break;
-                case 'G':
-                    chosenColor = G;
-                    break;
-                case 'B':
-                    chosenColor = B;
-                    break;
-                case 'W':
-                    chosenColor = W;
-                    break;
-            }
-
-            // if player choose factory, check if that color exist in the factory
-            if(factoryNumber != 0){
-                if (find(factoryDisplays[factoryNumber - 1].tiles.begin(), factoryDisplays[factoryNumber - 1].tiles.end(), chosenColor) != factoryDisplays[factoryNumber - 1].tiles.end()) {
-                    validColor = true;
-                } else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
-            }
-
-            // check if the color exist in Unused tile
-            else {
-                if(unusedTiles[chosenColor] > 0){validColor = true;}
-                else {cout << "Invalid Color. Please choose a color in the corresponding factory.";}
-            }
-
-            // Clear any input errors and discard invalid input
-            if (cin.fail()) { validColor = false; cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }      
-        }
-
-        int tileCount = 0;
-        // Take all tiles of the chosen color from the selected factory
-        if(factoryNumber != 0){
-            for (auto& display : factoryDisplays[factoryNumber - 1].tiles) {
-                if (display == chosenColor) {
-                    tileCount++;
-                }
-            }
-
-            // Add the rest to unused tile
-            for (auto& display : factoryDisplays[factoryNumber - 1].tiles) {
-                if (display != chosenColor) {
-                    unusedTiles[display]++;
-                    unusedNum++;
-                }
-            }
-            factoryDisplays.erase(factoryDisplays.begin() + factoryNumber-1);
-        }
-
-        // Take all tiles of the chosen color from Unused Tiles
-        else {
-            tileCount = unusedTiles[chosenColor];
-            unusedTiles[chosenColor] = 0;
-            unusedNum -= tileCount;
-        }
-
-        // Ask the player to choose a row for the staircase
-        int rowNumber;
-        cout << "Enter the number of the row you want to place the tiles (1-5), or choose 0 to trash them: ";
-
-        // Validate the input
-        bool validRow = false;
-        while(!validRow){
-            cin >> rowNumber;
-            if(rowNumber == 0){ break; }
-            
-            // check is 1 to 5
-            if(rowNumber < 1 || rowNumber > 5){
-                cout << "Invalid row number. Please choose a number between 1 and 5: ";
-            }
-
-            // check if the row is used for different color
-            else if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][0].used == true && playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][0].color != chosenColor){
-                cout << "This Row has used for different color, please choose other row: ";
-            }
-
-            // check if the row is full
-            else if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][rowNumber-1].used == true){
-                cout << "This row is full, please choose other row: ";
-            }
-            
-            else{validRow = true;}
-
-            if (cin.fail()) { cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); }      
-        }
-
-        // Trash all selected tiles
-        if(rowNumber == 0){
-            playerBoards[(nextPlayer+firstPlayer)%playerNumber].trash += tileCount;
-            cout << "Number of tiles moved to trash: " << tileCount << endl;
-        }
-
-        //Calculate the spaces available to put the tiles
-        else{
-            int spacesAvailable = rowNumber;
-            int startToAdd = 0;
-            for(int i = 0; i < rowNumber; i++){
-                if(playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][i].used == true){
-                    spacesAvailable--;
-                    startToAdd++;
-                }
-            }
-            if(tileCount < spacesAvailable){spacesAvailable = tileCount;}
-
-            // Update the player board and remaining tiles
-            for(int i = 0; i < spacesAvailable; i++){
-                playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].color = chosenColor;
-                playerBoards[(nextPlayer+firstPlayer)%playerNumber].staircasePart[rowNumber-1][startToAdd+i].used = true;
-                tileCount--;
-            }
-
-            // If the chosen row has fewer spaces than the tiles, move extra tiles to trash
-            if(tileCount > 0){
-                playerBoards[(nextPlayer+firstPlayer)%playerNumber].trash += tileCount;
-                cout << "Number of Extra tiles moved to trash: " << tileCount << endl;
-            }
-        }
         cout << "Updated Player Boards:" << endl;
         displayAll(playerNumber, factoryDisplays, unusedTiles, playerBoards);
 
@@ -534,10 +595,14 @@ void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unorde
 
     cout << "No more tiles on the table, now move the tile from right to left and count the points" << endl;
     cout << "---------------" << endl;
+
     moveTile(playerNumber, playerBoards);
     bool finished = CheckEnd(playerNumber, playerBoards);
     if(finished){ cout << "The game is ended." << endl; }
-    // else { playRound(playerNumber, factoryDisplays, unusedTiles, playerBoards, firstPlayer); }
+    else { 
+        factoryDrawTiles(factoryDisplays, bagTiles, playerBoards, playerNumber);
+        playRound(playerNumber, factoryDisplays, unusedTiles, playerBoards, firstPlayer); 
+    }
 }
 
 int main() {
@@ -560,9 +625,8 @@ int main() {
         if (cin.fail()) {cin.clear();}
     }
 
-    // Create Factory Displays, remaining tiles, unused tiles
+    // Create Factory Displays and unused tiles
     vector<FactoryDisplay> factoryDisplays(playerNumber*2+1);
-    unordered_map<Color, int> bagTiles;
     unordered_map<Color, int> unusedTiles;
 
     //Game Board Setup
