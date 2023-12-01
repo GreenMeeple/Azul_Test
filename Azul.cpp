@@ -727,7 +727,9 @@ void playRound(int playerNumber, vector<FactoryDisplay> &factoryDisplays, std::m
         if(factoryNum == 0 && firstToken){
             firstToken = false;
             firstPlayer = nextPlayer % playerNumber;
+            playerBoards[nextPlayer % playerNumber].trash ++;
             std::cout << "Player " << firstPlayer+1 << " is the first player to choose the Unused Plie in this round. On the next he will be the first player" << std::endl;
+            std::cout << "He needs to take the firstplayer token to his trash pile." << std::endl;
         }
 
         // Get the Row number of the staircase to put
@@ -776,7 +778,10 @@ void playRound(int playerNumber, vector<FactoryDisplay> &factoryDisplays, std::m
     }
     else
     {
+        std::cout << "New Round starts." << endl;
+        std::cout << "Factories draw new piles from the bag, first player token return to the unused pile." << endl;
         factoryDrawTiles(factoryDisplays, bagTiles, playerBoards, playerNumber);
+        displayAll(playerNumber, factoryDisplays, unusedTiles, playerBoards);
         playRound(playerNumber, factoryDisplays, unusedTiles, playerBoards, firstPlayer);
     }
 }
