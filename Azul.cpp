@@ -2,10 +2,11 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
-#include <unordered_map>
+#include <map>
 #include <algorithm> 
 #include <stdexcept>
 #include <limits>
+#include <functional>
 
 using namespace std;
 
@@ -41,7 +42,7 @@ struct PlayerBoard {
 int pointsToDeduct[8] = {0, 1, 2, 4, 6, 8, 11, 14};
 
 // Define a bag that contains all the tiles
-unordered_map<Color, int> bagTiles;
+std::map<Color, int> bagTiles;
 
 // Function to initialize a player board
 void initializePlayerBoard(PlayerBoard& playerBoard) {
@@ -64,7 +65,7 @@ void initializePlayerBoard(PlayerBoard& playerBoard) {
 }
 
 // Function to refill bagTiles
-void refillBagTiles(unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber){
+void refillBagTiles(std::map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber){
     cout << "Tiles in the bag are used up, refill the bag. " << endl;
 
     for (int i = 0; i < 5; ++i) {
@@ -83,19 +84,24 @@ void refillBagTiles(unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& pl
 }
 
 // Function to draw tiles for a round
-void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber) {
+void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& bagTiles, vector<PlayerBoard>& playerBoards, int playerNumber) {
     int tileNum = 0;
-    for (const auto& entry : bagTiles) {
+    for (std::map<Color, int>::const_iterator it = bagTiles.begin(); it != bagTiles.end(); ++it) {
+        const std::pair<const Color, int>& entry = *it;
         tileNum += entry.second;
     }
 
     // Randomly fill each factory display with tiles
-    for (auto& display : factoryDisplays) {
+    for (std::vector<FactoryDisplay>::iterator it = factoryDisplays.begin(); it != factoryDisplays.end(); ++it) {
+        FactoryDisplay& display = *it;
+
         display.tiles.clear(); // Clear previous tiles
         for (int i = 0; i < 4; ++i) {
 
             // refill bagTiles
-            if(tileNum == 0){ refillBagTiles(bagTiles, playerBoards, playerNumber);}
+            if (tileNum == 0) { 
+                refillBagTiles(bagTiles, playerBoards, playerNumber);
+            }
 
             Color randomColor = static_cast<Color>(rand() % 5);
             if (bagTiles[randomColor] > 0) {
@@ -110,12 +116,14 @@ void factoryDrawTiles(vector<FactoryDisplay>& factoryDisplays, unordered_map<Col
     }
 }
 
-// Function to display tiles in each factory display
+
 void displayFactoryDisplays(const vector<FactoryDisplay>& factoryDisplays) {
     for (int i = 0; i < factoryDisplays.size(); ++i) {
         cout << "Factory " << (i + 1) << ": ";
-        for (const auto& color : factoryDisplays[i].tiles) {
-            switch (color) {
+        const vector<Color>& tiles = factoryDisplays[i].tiles;
+        
+        for (int j = 0; j < tiles.size(); ++j) {
+            switch (tiles[j]) {
                 case R:
                     cout << "R ";
                     break;
@@ -139,9 +147,10 @@ void displayFactoryDisplays(const vector<FactoryDisplay>& factoryDisplays) {
 }
 
 // Function to display remaining tiles for each color
-void displaybagTiles(const unordered_map<Color, int>& bagTiles) {
+void displaybagTiles(const std::map<Color, int>& bagTiles) {
     cout << "Tiles in the Bag: ";
-    for (const auto& entry : bagTiles) {
+    for (std::map<Color, int>::const_iterator it = bagTiles.begin(); it != bagTiles.end(); ++it) {
+        const std::pair<const Color, int>& entry = *it;
         switch (entry.first) {
             case R:
                 cout << "RED: " << entry.second << " ";
@@ -165,9 +174,10 @@ void displaybagTiles(const unordered_map<Color, int>& bagTiles) {
 }
 
 // Function to display remaining tiles for each color
-void displayUnusedTiles(const unordered_map<Color, int>& unusedTiles) {
+void displayUnusedTiles(const std::map<Color, int>& unusedTiles) {
     cout << "Unused Tiles: ";
-    for (const auto& entry : unusedTiles) {
+    for (std::map<Color, int>::const_iterator it = unusedTiles.begin(); it != unusedTiles.end(); ++it) {
+        const std::pair<const Color, int>& entry = *it;
         switch (entry.first) {
             case R:
                 cout << "RED: " << entry.second << " ";
@@ -262,7 +272,7 @@ void displayPlayerScore(int playerNumber, vector<PlayerBoard>& playerBoards) {
 }
 
 // A warpper function for easying calling
-void displayAll(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards){
+void displayAll(int playerNumber, vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards){
     for (int i = 0; i < playerNumber; ++i) {
         cout << "Player " << (i + 1) << ":" << endl;
         displayPlayerBoard(playerBoards[i]);
@@ -273,7 +283,7 @@ void displayAll(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unord
 }
 
 // Initialize The whole game
-vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& bagTiles, unordered_map<Color, int>& unusedTiles){
+vector<PlayerBoard> gameSetUp(int playerNumber, vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& bagTiles, std::map<Color, int>& unusedTiles){
     // Initialize player boards
     vector<PlayerBoard> playerBoards(playerNumber);
     for (int i = 0; i < playerNumber; ++i) {
@@ -326,7 +336,7 @@ int getFactoryNum(int unusedNum, vector<FactoryDisplay>& factoryDisplays){
 }
 
 // Player choose a color to take
-Color getColor(int unusedNum, int factoryNum, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles){
+Color getColor(int unusedNum, int factoryNum, vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& unusedTiles){
     cout << "Enter the letter of the color you want to choose (R/Y/G/B/W): ";
 
     // Validate the input
@@ -376,21 +386,17 @@ Color getColor(int unusedNum, int factoryNum, vector<FactoryDisplay>& factoryDis
 }
 
 // Get the number of tiles player takes
-int getTiles(int unusedNum, int factoryNum, Color chosenColor, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles){
+int getTiles(int unusedNum, int factoryNum, Color chosenColor, vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& unusedTiles){
     int tileCount = 0;
     
     // Take all tiles of the chosen color from the selected factory
     if(factoryNum != 0){
-        for (auto& display : factoryDisplays[factoryNum - 1].tiles) {
-            if (display == chosenColor) {
+        const vector<Color>& display = factoryDisplays[factoryNum - 1].tiles;
+        for (int j = 0; j < display.size(); ++j) {
+            if (display[j] == chosenColor) {
                 tileCount++;
-            }
-        }
-
-        // Add the rest to unused tile
-        for (auto& display : factoryDisplays[factoryNum - 1].tiles) {
-            if (display != chosenColor) {
-                unusedTiles[display]++;
+            } else {
+                unusedTiles[display[j]]++;
                 unusedNum++;
             }
         }
@@ -405,6 +411,10 @@ int getTiles(int unusedNum, int factoryNum, Color chosenColor, vector<FactoryDis
     }
     return tileCount;
 }
+// Define a function outside of isValidRow
+bool isValidSquare(const PlayerBoard::SquarePart& square, Color chosenColor) {
+    return square.built && square.color == chosenColor;
+}
 
 // Get the Row number of the staircase to put
 bool isValidRow(const PlayerBoard& playerBoard, int rowNum, Color chosenColor) {
@@ -413,9 +423,7 @@ bool isValidRow(const PlayerBoard& playerBoard, int rowNum, Color chosenColor) {
            playerBoard.staircasePart[rowNum - 1][rowNum - 1].used == false &&
            std::none_of(std::begin(playerBoard.squarePart[rowNum - 1]),
                         std::end(playerBoard.squarePart[rowNum - 1]),
-                        [chosenColor](const PlayerBoard::SquarePart& square) {
-                            return square.built && square.color == chosenColor;
-                        });
+                        std::bind(&isValidSquare, std::placeholders::_1, chosenColor));
 }
 
 // Put the tiles to the staircase
@@ -541,7 +549,7 @@ bool CheckEnd(int playerNumber, vector<PlayerBoard>& playerBoards){
 }
 
 // Function to draw tiles for a player's turn
-void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, unordered_map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards, int firstPlayer){
+void playRound(int playerNumber, vector<FactoryDisplay>& factoryDisplays, std::map<Color, int>& unusedTiles, vector<PlayerBoard>& playerBoards, int firstPlayer){
     // Simulate a player's turn
     int nextPlayer = firstPlayer;
     int unusedNum = 0;
@@ -627,7 +635,7 @@ int main() {
 
     // Create Factory Displays and unused tiles
     vector<FactoryDisplay> factoryDisplays(playerNumber*2+1);
-    unordered_map<Color, int> unusedTiles;
+    std::map<Color, int> unusedTiles;
 
     //Game Board Setup
     vector<PlayerBoard> playerBoards = gameSetUp(playerNumber, factoryDisplays, bagTiles, unusedTiles);
