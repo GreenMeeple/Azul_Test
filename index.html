@@ -7,7 +7,7 @@
     <title>TilesBuilder</title>
 
     <!-- Load custom style sheet -->
-    <link rel="stylesheet" type="text/css" href="theme/love.css">
+    <link rel="stylesheet" type="text/css" href="WebDemo/theme/love.css">
   </head>
   <body>
     <center>
@@ -60,7 +60,7 @@
       }, false);
 
       var Module = {
-        arguments: ["./game.love"],
+        arguments: ["./WebDemo/game.love"],
         INITIAL_MEMORY: 16777216,
         printErr: console.error.bind(console),
         canvas: (function() {
@@ -102,8 +102,8 @@
         Love(Module);
       }
     </script>
-    <script type="text/javascript" src="game.js"></script>
-    <script async type="text/javascript" src="love.js" onload="applicationLoad(this)"></script>
+    <script type="text/javascript" src="WebDemo/game.js"></script>
+    <script async type="text/javascript" src="WebDemo/love.js" onload="applicationLoad(this)"></script>
     <footer>
       <p>Built with <a href="https://github.com/Davidobot/love.js">love.js</a> <button onclick="goFullScreen();">Go Fullscreen</button><br>Hint: Reload the page if screen is blank</p>
     </footer>
