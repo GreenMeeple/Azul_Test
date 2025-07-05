@@ -1,5 +1,5 @@
 function LoadAssets()
-    local Board = love.graphics.newImage('assets/playerboard.png')
+    local Board = love.graphics.newImage('demo_assets/playerboard.png')
 
     -- Store board dimensions
     local boardW = Board:getWidth() / 2
@@ -32,7 +32,7 @@ function LoadAssets()
     }
 
     Box = {}
-    local BoxImage = love.graphics.newImage('assets/Azul.png')
+    local BoxImage = love.graphics.newImage('demo_assets/Azul.png')
     -- Box for used tiles, stored until the bag is emptied
     BoxLoc = {
         image  = BoxImage,
@@ -43,7 +43,7 @@ function LoadAssets()
     }
 
     Bag = {}
-    local BagImage = love.graphics.newImage('assets/bag.png')
+    local BagImage = love.graphics.newImage('demo_assets/bag.png')
     -- Bag
     BagLoc = {
         image  = BagImage,

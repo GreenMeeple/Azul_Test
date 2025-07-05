@@ -13,5 +13,3 @@ By using or distributing this program, you agree to do so at your own risk, and 
 
 This disclaimer serves as a notice to respect the intellectual property of the original creators and to use this program responsibly and in compliance with applicable laws and regulations.  
 """
-
-

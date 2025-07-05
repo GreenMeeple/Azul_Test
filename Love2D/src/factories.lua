@@ -1,5 +1,5 @@
 function LoadFactory()
-    local Factory = love.graphics.newImage('assets/factory.png')
+    local Factory = love.graphics.newImage('demo_assets/factory.png')
     Factories = {}
     Factories.image = Factory
     -- Center part

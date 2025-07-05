@@ -7,13 +7,15 @@ require 'src.textbox'
 require 'src.tiles'
 require 'src.move'
 
+local scale = {}
+
 function StartCoroutine(fn)
     CoroutineRunner.current = coroutine.create(fn)
     CoroutineRunner.waitTime = 0
 end
 
 function ColorFromBytes(r, g, b, a)
-    return { (r or 0)/255, (g or 0)/255, (b or 0)/255, (a or 255)/255 }
+    return { (r or 0) / 255, (g or 0) / 255, (b or 0) / 255, (a or 255) / 255 }
 end
 
 function math.dist(x1, y1, x2, y2)
@@ -53,24 +55,24 @@ GameState = {
 function love.load()
     -- Fonts
     Fonts = {
-        large = love.graphics.newFont("assets/Algerian Regular.ttf", 24),
-        small = love.graphics.newFont("assets/Algerian Regular.ttf", 15),
+        large = love.graphics.newFont("demo_assets/Algerian Regular.ttf", 24),
+        small = love.graphics.newFont("demo_assets/Algerian Regular.ttf", 15),
     }
     -- Sound Effects
-    TileSound = love.audio.newSource("assets/ceramic.mp3", "stream")
+    TileSound = love.audio.newSource("demo_assets/ceramic.mp3", "stream")
     TileSound:setVolume(0.2)
-    CoinSound = love.audio.newSource("assets/coin.mp3", "stream")
-    RoundSound = love.audio.newSource("assets/jackpot.mp3", "stream")
+    CoinSound = love.audio.newSource("demo_assets/coin.mp3", "stream")
+    RoundSound = love.audio.newSource("demo_assets/jackpot.mp3", "stream")
     -- Tiles Image
     TileImages = {
-        black = love.graphics.newImage("assets/black.png"),
-        blue = love.graphics.newImage("assets/blue.png"),
-        red = love.graphics.newImage("assets/red.png"),
-        yellow = love.graphics.newImage("assets/yellow.png"),
-        cyan = love.graphics.newImage("assets/cyan.png"),
-        FirstPlayer = love.graphics.newImage('assets/firstplayer.png')
+        black = love.graphics.newImage("demo_assets/black.png"),
+        blue = love.graphics.newImage("demo_assets/blue.png"),
+        red = love.graphics.newImage("demo_assets/red.png"),
+        yellow = love.graphics.newImage("demo_assets/yellow.png"),
+        cyan = love.graphics.newImage("demo_assets/cyan.png"),
+        FirstPlayer = love.graphics.newImage('demo_assets/firstplayer.png')
     }
-    Background = love.graphics.newImage('assets/background.png')
+    Background = love.graphics.newImage('demo_assets/background.png')
     -- Window Size
     Window = {
         x = 1440,
@@ -78,6 +80,8 @@ function love.load()
         centerX = 720,
         centerY = 405
     }
+    scale.x = love.graphics.getWidth() / Window.x
+    scale.y = love.graphics.getHeight() / Window.y
     -- Confirm Buttons
     ConfirmPopup = { active = false, row = nil }
     SelectedTiles = { color = nil, fIndex = 0 }
@@ -116,6 +120,10 @@ function love.update(dt)
     -- create waiting time between animations
     if CoroutineRunner.current then
         UpdateCoroutine(dt)
+    end
+    HelpBtn.press = false
+    if love.keyboard.isDown("h") then
+        HelpBtn.press = true
     end
 
     local mx, my = love.mouse.getPosition()
@@ -163,12 +171,7 @@ function love.update(dt)
 end
 
 function love.keypressed(key)
-    if key == "h" then
-        HelpBtn.press = true
-    else
-        HelpBtn.press = false
-    end
-
+    if key == "escape" then love.event.quit() end
     if not GameState.gameStart then
         if key == "2" or key == "3" or key == "4" then
             local val = tonumber(key)
@@ -292,6 +295,8 @@ function love.mousepressed(mx, my, mbutton)
 end
 
 function love.draw()
+    love.graphics.scale(scale.x, scale.y)
+
     love.graphics.draw(Background, 0, 0)
     if GameState.gameStart == false then
         DrawStartMenu()
@@ -310,7 +315,7 @@ function love.draw()
         if ConfirmPopup.active then
             DrawConfirmPopUp()
         end
-        DrawBtns()
         love.graphics.draw(BoxLoc.image, BoxLoc.x, BoxLoc.y, nil, 0.2)
+        DrawBtns()
     end
 end

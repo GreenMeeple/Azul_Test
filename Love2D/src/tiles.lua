@@ -72,7 +72,7 @@ function Tile:draw(r, g, b, a)
 end
 
 function LoadTiles()
-    local FirstPlayer = love.graphics.newImage('assets/firstplayer.png')
+    local FirstPlayer = love.graphics.newImage('demo_assets/firstplayer.png')
     FirstPlayerX = Window.centerX - FirstPlayer:getWidth() / 2
     FirstPlayerY = Window.centerY - FirstPlayer:getHeight() / 2
     FirstPlayerTile = Tile:new(FirstPlayer, FirstPlayerX, FirstPlayerY)
