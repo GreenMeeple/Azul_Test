@@ -88,3 +88,20 @@ class Game:
         if horiz > 0: score += horiz
         if vert > 0: score += vert
         return score
+    
+    def end_game(self, players):
+        for player in players:
+            # Full row = 2 points (already checked during scoring usually)
+            # Full column
+            for col in range(5):
+                if all(player.wall[row][col] is not None for row in range(5)):
+                    player.score += 7
+
+            # Full color (one tile of same color in all rows)
+            for color in COLORS:
+                count = sum(
+                    any(tile == color for tile in row if tile is not None)
+                    for row in player.wall
+                )
+                if count == 5:
+                    player.score += 10
