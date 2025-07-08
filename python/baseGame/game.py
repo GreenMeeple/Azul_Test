@@ -1,5 +1,5 @@
-from assets import *
-from tiles import *
+from baseGame.assets import *
+from baseGame.tiles import *
 
 class Game:
     def __init__(self):

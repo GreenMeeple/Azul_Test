@@ -1,6 +1,6 @@
 import random
 from collections import Counter
-from assets import *
+from baseGame.assets import *
 
 class TileBag:
     def __init__(self):

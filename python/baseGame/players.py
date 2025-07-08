@@ -1,4 +1,4 @@
-from assets import *
+from baseGame.assets import *
 
 class Player:
     def __init__(self):
@@ -9,13 +9,13 @@ class Player:
 
     def __str__(self):
         s = f"Score: {self.score}\n"
-        s += "Pattern Lines:\n"
-        for i, line in enumerate(self.pattern_lines):
-            s += f"{i + 1}: {line}\n"
-        s += f"Floor: {self.floor}\n"
-        s += 'Wall:\n'
-        for row in self.wall:
-            s += ' '.join(tile[0].upper() if tile else '.' for tile in row) + '\n'
+        # s += "Pattern Lines:\n"
+        # for i, line in enumerate(self.pattern_lines):
+        #     s += f"{i + 1}: {line}\n"
+        # s += f"Floor: {self.floor}\n"
+        # s += 'Wall:\n'
+        # for row in self.wall:
+        #     s += ' '.join(tile[0].upper() if tile else '.' for tile in row) + '\n'
         return s
 
     def choose_tiles(self, source, color):
@@ -65,5 +65,43 @@ class Player:
             return False
         if len(line) >= line_index + 1:
             return False
+        return True
+    
+    def get_legal_moves(self, game):
+        legal_moves = []
+
+        all_factories = game.factories + [game.center]
+
+        for i, factory in enumerate(all_factories):
+            if not factory:
+                continue
+            for color in set(factory):
+                if color == "first_player":
+                    continue  # cannot choose first_player as a tile
+                legal = False
+                for line in range(5):
+                    if self.is_legal_move(color, line):
+                        legal_moves.append((i, color, line))
+                        legal = True
+                if not legal:
+                    # No line can accept this color, so drop it to floor
+                    legal_moves.append((i, color, -1))  # -1 = floor line
+        return legal_moves
+
+    def is_legal_move(self, color, line_index):
+        pattern_line = self.pattern_lines[line_index]
+
+        # Rule 1: Cannot mix colors in pattern line
+        if pattern_line and pattern_line[0] != color:
+            return False
+
+        # Rule 2: Cannot place tile if wall already has that color in that row
+        if color in self.wall[line_index]:
+            return False
+
+        # Rule 3: Cannot overfill the pattern line
+        if len(pattern_line) >= line_index + 1:
+            return False
+
         return True
 
