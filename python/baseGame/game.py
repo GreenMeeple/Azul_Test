@@ -92,6 +92,10 @@ class Game:
     def end_game(self, players):
         for player in players:
             # Full row = 2 points (already checked during scoring usually)
+            for row in range(5):
+                if all(player.wall[row][col] is not None for col in range(5)):
+                    player.score += 2
+
             # Full column
             for col in range(5):
                 if all(player.wall[row][col] is not None for row in range(5)):

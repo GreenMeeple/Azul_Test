@@ -13,9 +13,9 @@ class Player:
         # for i, line in enumerate(self.pattern_lines):
         #     s += f"{i + 1}: {line}\n"
         # s += f"Floor: {self.floor}\n"
-        # s += 'Wall:\n'
-        # for row in self.wall:
-        #     s += ' '.join(tile[0].upper() if tile else '.' for tile in row) + '\n'
+        s += 'Wall:\n'
+        for row in self.wall:
+            s += ' '.join(tile[0].upper() if tile else '.' for tile in row) + '\n'
         return s
 
     def choose_tiles(self, source, color):

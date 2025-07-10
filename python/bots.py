@@ -10,7 +10,7 @@ def random_agent(game, player):
         # No legal moves at all (shouldn’t happen in Azul, but just in case)
         return None
 
-def greedy_agent(game, player, idx):
+def greedy_agent(game, player):
     legal_moves = player.get_legal_moves(game)
     best_score = float('-inf')
     best_move = None
